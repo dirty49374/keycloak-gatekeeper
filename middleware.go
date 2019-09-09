@@ -324,6 +324,7 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) 
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
 			// we don't need to continue is a decision has been made
 			scope := req.Context().Value(contextScopeName).(*RequestScope)
 			if scope.AccessDenied {
@@ -359,6 +360,22 @@ func (r *oauthProxy) admissionMiddleware(resource *Resource) func(http.Handler) 
 			// step: if we have any claim matching, lets validate the tokens has the claims
 			for claimName, match := range claimMatches {
 				if !r.checkClaim(user, claimName, match, resource.URL) {
+					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+					return
+				}
+			}
+
+			if r.config.OpenPolicyAgentURI != "" {
+				allow, err := checkOpaAllowed(r.config.OpenPolicyAgentURI, resource, req, user)
+				if err != nil {
+					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
+					r.log.Warn("opa error",
+						zap.String("access", "denied"),
+						zap.String("method", req.Method),
+						zap.String("path", req.URL.Path))
+					return
+				}
+				if !allow {
 					next.ServeHTTP(w, req.WithContext(r.accessForbidden(w, req)))
 					return
 				}

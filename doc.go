@@ -361,6 +361,8 @@ type Config struct {
 
 	// DisableAllLogging indicates no logging at all
 	DisableAllLogging bool `json:"disable-all-logging" yaml:"disable-all-logging" usage:"disables all logging to stdout and stderr"`
+
+	OpenPolicyAgentURI string `json:"open-policy-agent-uri" yaml:"open-policy-agent-uri" usage:"the uri for open policy agent endpoint" env:"OPA_URI"`
 }
 
 // getVersion returns the proxy version
